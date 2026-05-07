@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Smart Tabs for Claude",
+  "version": "0.1.0",
+  "description": "Adds smart navigation tabs to Claude.ai conversations.",
+  "host_permissions": [
+    "https://claude.ai/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["dist/content.js"],
+      "css": ["src/styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["storage", "activeTab"]
+}

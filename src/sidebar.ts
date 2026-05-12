@@ -1,4 +1,5 @@
 import type { Section } from "./parser";
+import { getScrollContainer } from "./parser";
 
 const SIDEBAR_ID = "smart-tabs-sidebar";
 const COLLAPSED_ID = "smart-tabs-collapsed";
@@ -11,6 +12,38 @@ let lastActiveId: string | null = null;
 let isHidden = false;
 let latestActions: SidebarActions | null = null;
 let keybindInstalled = false;
+let positionObserver: ResizeObserver | null = null;
+
+function getSidebarPosition(): { left: string; top: string } | null {
+  const sc = getScrollContainer();
+  if (!sc) return null;
+  const rect = sc.getBoundingClientRect();
+  return { left: `${rect.left}px`, top: `${rect.top + 8}px` };
+}
+
+function applyPosition(el: HTMLElement) {
+  const pos = getSidebarPosition();
+  if (!pos) return;
+  el.style.left = pos.left;
+  el.style.top = pos.top;
+}
+
+function updatePosition() {
+  const pos = getSidebarPosition();
+  if (!pos) return;
+  const sidebar = document.getElementById(SIDEBAR_ID);
+  const collapsed = document.getElementById(COLLAPSED_ID);
+  if (sidebar) { sidebar.style.left = pos.left; sidebar.style.top = pos.top; }
+  if (collapsed) { collapsed.style.left = pos.left; collapsed.style.top = pos.top; }
+}
+
+function startPositionTracking() {
+  positionObserver?.disconnect();
+  const sc = getScrollContainer();
+  if (!sc) return;
+  positionObserver = new ResizeObserver(updatePosition);
+  positionObserver.observe(sc);
+}
 
 interface SidebarActions {
   autoTabsEnabled: boolean;
@@ -23,6 +56,8 @@ interface SidebarActions {
 
 export function resetSidebarState() {
   currentSections = [];
+  positionObserver?.disconnect();
+  positionObserver = null;
 
   if (activeScrollContainer) {
     activeScrollContainer.removeEventListener("scroll", handleScroll);
@@ -625,7 +660,9 @@ function showCollapsed(actions: SidebarActions) {
     btn = document.createElement("button");
     btn.id = COLLAPSED_ID;
     btn.textContent = "Tabs";
+    applyPosition(btn as HTMLElement);
     document.body.appendChild(btn);
+    startPositionTracking();
   }
 
   btn.onclick = () => {
@@ -782,9 +819,11 @@ export function renderSidebar(sections: Section[], actions: SidebarActions) {
   if (!sidebar) {
     sidebar = document.createElement("div");
     sidebar.id = SIDEBAR_ID;
+    applyPosition(sidebar);
     document.body.appendChild(sidebar);
   }
 
+  startPositionTracking();
   sidebar.innerHTML = "";
 
   const header = document.createElement("div");

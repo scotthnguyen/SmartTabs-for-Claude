@@ -14,35 +14,60 @@ let latestActions: SidebarActions | null = null;
 let keybindInstalled = false;
 let positionObserver: ResizeObserver | null = null;
 
-function getSidebarPosition(): { left: string; top: string } | null {
-  const sc = getScrollContainer();
-  if (!sc) return null;
-  const rect = sc.getBoundingClientRect();
-  return { left: `${rect.left}px`, top: `${rect.top + 8}px` };
+function getNavWidth(): number {
+  const nav = document.querySelector('[class*="z-sidebar"]')?.parentElement;
+  if (nav) {
+    const width = nav.getBoundingClientRect().width;
+    if (width > 10) return width;
+  }
+
+  const toggleBtn = document.querySelector(
+    'button[aria-label*="sidebar"], button[aria-label*="menu"], button[aria-label*="navigation"]'
+  );
+  if (toggleBtn) {
+    const btnRight = toggleBtn.getBoundingClientRect().right;
+    if (btnRight > 60) return btnRight + 8;
+  }
+
+  return 260;
+}
+
+function getSidebarPosition(): { left: string; top: string } {
+  const stickyTop = document.querySelector('[class*="sticky"][class*="top"]');
+  const leftOffset = getNavWidth();
+  const topOffset = stickyTop?.getBoundingClientRect().bottom ?? 60;
+  return { left: `${leftOffset + 12}px`, top: `${topOffset + 8}px` };
 }
 
 function applyPosition(el: HTMLElement) {
   const pos = getSidebarPosition();
-  if (!pos) return;
   el.style.left = pos.left;
   el.style.top = pos.top;
 }
 
 function updatePosition() {
+  const sidebarEl = document.getElementById(SIDEBAR_ID);
+  const collapsedEl = document.getElementById(COLLAPSED_ID);
+  if (!sidebarEl && !collapsedEl) return;
   const pos = getSidebarPosition();
-  if (!pos) return;
-  const sidebar = document.getElementById(SIDEBAR_ID);
-  const collapsed = document.getElementById(COLLAPSED_ID);
-  if (sidebar) { sidebar.style.left = pos.left; sidebar.style.top = pos.top; }
-  if (collapsed) { collapsed.style.left = pos.left; collapsed.style.top = pos.top; }
+  if (sidebarEl) { sidebarEl.style.left = pos.left; sidebarEl.style.top = pos.top; }
+  if (collapsedEl) { collapsedEl.style.left = pos.left; collapsedEl.style.top = pos.top; }
 }
 
 function startPositionTracking() {
+  const sidebarEl = document.getElementById(SIDEBAR_ID);
+  const collapsedEl = document.getElementById(COLLAPSED_ID);
+  if (!sidebarEl && !collapsedEl) return;
   positionObserver?.disconnect();
-  const sc = getScrollContainer();
-  if (!sc) return;
   positionObserver = new ResizeObserver(updatePosition);
-  positionObserver.observe(sc);
+
+  const sc = getScrollContainer();
+  if (sc) positionObserver.observe(sc);
+
+  const toggleBtn = document.querySelector(
+    'button[aria-label*="sidebar"], button[aria-label*="menu"]'
+  );
+  if (toggleBtn) positionObserver.observe(toggleBtn);
 }
 
 interface SidebarActions {

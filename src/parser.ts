@@ -99,12 +99,6 @@ export function parseConversation(): Section[] {
     sc?.querySelector<HTMLElement>(SELECTORS.turnFeed) ??
     document.querySelector<HTMLElement>(SELECTORS.turnFeed);
 
-  console.log("[SmartTabs] parseConversation called", {
-    hasFeed: !!feed,
-    feedChildren: feed?.children.length ?? 0,
-    url: window.location.href,
-  });
-
   if (!feed) return sections;
 
   Array.from(feed.children as HTMLCollectionOf<HTMLElement>).forEach((turn, index) => {
@@ -159,17 +153,6 @@ export function parseConversation(): Section[] {
     const elementTarget = userMessageNode
       ? getUserBubbleChild(userMessageNode)
       : ((turn.firstElementChild as HTMLElement) ?? turn);
-
-    console.log(`[SmartTabs] msg[${index}]`, {
-      rawText: rawText.slice(0, 60) || "(empty)",
-      imageAttached,
-      attachedFilename,
-      hasUserMessage,
-      hasFileAttachment,
-      imgInTurn,
-      testids: testids.slice(0, 6),
-      turnClass: turn.className.slice(0, 80),
-    });
 
     sections.push({
       id: generatedId,

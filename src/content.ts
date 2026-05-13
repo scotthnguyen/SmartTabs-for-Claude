@@ -146,7 +146,11 @@ function renameTab(section: Section, newTitle: string) {
   const existing = sectionMap.get(key);
   if (!existing) return;
 
-  sectionMap.set(key, { ...existing, title: newTitle });
+  const title =
+    existing.type === "bookmark" && !newTitle.startsWith("★ ")
+      ? `★ ${newTitle}`
+      : newTitle;
+  sectionMap.set(key, { ...existing, title });
 
   if (existing.type === "bookmark") {
     void saveBookmarksForCurrentChat();
@@ -202,7 +206,8 @@ function startPollingRouteChanges() {
 function handleRouteChange() {
   conversationObserver?.disconnect();
   conversationObserver = null;
-  // Remove sidebar instantly — don't wait for re-init
+  // Disconnect ResizeObserver and clean up sidebar state before DOM removal
+  resetSidebarState();
   removeSidebarFromPage();
 
   // Generation counter: if a second navigation fires during the 400ms wait,
@@ -214,17 +219,8 @@ function handleRouteChange() {
 }
 
 async function init(): Promise<void> {
-  console.log("[SmartTabs] init called", {
-    pathname: window.location.pathname,
-    isInChat: isInChat(),
-    chatId: getChatId(),
-    sentinelPresent: !!document.getElementById(SENTINEL_ID),
-    currentChatId,
-  });
-
   // Prevent double-injection: sentinel is removed by removeSidebarFromPage()
   if (document.getElementById(SENTINEL_ID)) {
-    console.log("[SmartTabs] init bailed — sentinel already present");
     return;
   }
 
@@ -237,7 +233,6 @@ async function init(): Promise<void> {
 
   // Not on a /chat/<uuid> page — ensure sidebar is gone and bail
   if (!isInChat() || !newChatId) {
-    console.log("[SmartTabs] init bailed — not in chat", { isInChat: isInChat(), newChatId });
     removeSidebarFromPage();
     return;
   }
@@ -247,7 +242,6 @@ async function init(): Promise<void> {
     await resetForNewChat();
   }
 
-  console.log("[SmartTabs] init calling parseConversation");
   const parsed = parseConversation();
   mergeSections(parsed);
 
@@ -264,32 +258,16 @@ function waitForScrollContainer(callback: () => void, timeoutMs = 10000) {
   function poll() {
     const sc = getScrollContainer();
     if (sc) {
-      console.log("[SmartTabs] scroll container found", {
-        tag: sc.tagName,
-        className: sc.className.slice(0, 100),
-        scrollHeight: sc.scrollHeight,
-        elapsed: Date.now() - start,
-      });
       callback();
     } else if (Date.now() - start < timeoutMs) {
       window.setTimeout(poll, 200);
-    } else {
-      console.warn("[SmartTabs] waitForScrollContainer timed out after", timeoutMs, "ms — scroll container never found");
     }
   }
   poll();
 }
 
-console.log("[SmartTabs] bootstrap", {
-  pathname: window.location.pathname,
-  isInChat: isInChat(),
-  chatId: getChatId(),
-});
-
 startPollingRouteChanges();
 
 if (isInChat()) {
   waitForScrollContainer(() => void init());
-} else {
-  console.log("[SmartTabs] not in chat at load — skipping init, polling for route change");
 }

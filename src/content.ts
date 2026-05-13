@@ -3,13 +3,17 @@ import { renderSidebar, resetSidebarState } from "./sidebar";
 
 // Minimal chrome.storage types — avoids pulling in the full @types/chrome package
 declare const chrome: {
-  storage: {
-    local: {
+  storage?: {
+    local?: {
       get(key: string, callback: (result: Record<string, unknown>) => void): void;
       set(items: Record<string, unknown>): void;
     };
   };
 };
+
+function isChromeStorageAvailable(): boolean {
+  return typeof chrome !== "undefined" && chrome.storage?.local !== undefined;
+}
 
 console.log("[SmartTabs] content script loaded", window.location.href);
 
@@ -56,7 +60,8 @@ function removeSidebarFromPage() {
 
 function getStoredBookmarks(): Promise<Record<string, StoredBookmark[]>> {
   return new Promise((resolve) => {
-    chrome.storage.local.get(STORAGE_KEY, (result) => {
+    if (!isChromeStorageAvailable()) { resolve({}); return; }
+    chrome.storage!.local!.get(STORAGE_KEY, (result) => {
       const value = result[STORAGE_KEY];
       resolve(typeof value === "object" && value !== null ? (value as Record<string, StoredBookmark[]>) : {});
     });
@@ -72,7 +77,8 @@ async function saveBookmarksForCurrentChat(): Promise<void> {
     .map(({ element, ...rest }) => rest);
 
   allBookmarks[currentChatId] = bookmarks;
-  chrome.storage.local.set({ [STORAGE_KEY]: allBookmarks });
+  if (!isChromeStorageAvailable()) return;
+  chrome.storage!.local!.set({ [STORAGE_KEY]: allBookmarks });
 }
 
 async function loadBookmarksForCurrentChat(): Promise<void> {
